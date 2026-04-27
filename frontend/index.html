@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SWOT Intelligence RAG</title>
+    <title>Meridian SWOT Intelligence</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
@@ -18,8 +18,8 @@
 
     <main class="container">
         <header class="hero">
-            <h1>SWOT Intelligence <span class="gradient-text">RAG</span></h1>
-            <p>Generate institutional-grade SWOT analysis from SEC 10-K filings using NVIDIA AI.</p>
+            <h1>Meridian SWOT <span class="gradient-text">Intelligence</span></h1>
+            <p>Precision Corporate Intelligence for the Global Market.</p>
         </header>
 
         <section class="card glass shadow-xl" id="step-1">
@@ -35,6 +35,20 @@
                 </button>
             </div>
             <div id="fetch-status" class="status-msg hidden"></div>
+            
+            <div id="fetch-progress-container" class="progress-container hidden" style="margin-top: 1.5rem;">
+                <div class="progress-label">Fetching Document...</div>
+                <div class="progress-bar-wrapper">
+                    <div id="fetch-progress-fill" class="progress-fill"></div>
+                </div>
+            </div>
+
+            <div id="embed-progress-container" class="progress-container hidden">
+                <div class="progress-label">Embedding into Vector Store...</div>
+                <div class="progress-bar-wrapper">
+                    <div id="embed-progress-fill" class="progress-fill"></div>
+                </div>
+            </div>
         </section>
 
         <section class="card glass shadow-xl hidden" id="step-2">
@@ -52,8 +66,11 @@
         </section>
 
         <section class="card glass shadow-xl hidden" id="analysis-section">
-            <div class="card-header">
+            <div class="card-header" style="justify-content: space-between; width: 100%;">
                 <h2>Analysis Progress</h2>
+                <button id="stop-btn" class="btn btn-stop hidden">
+                    <i class="fas fa-stop"></i> Stop Analysis
+                </button>
             </div>
             <div class="progress-container">
                 <div class="progress-bar-wrapper">

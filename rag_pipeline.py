@@ -20,7 +20,7 @@ def get_llm():
     model = os.environ.get("NVIDIA_LLM_MODEL", "meta/llama-3.3-70b-instruct")
     return ChatNVIDIA(model=model, nvidia_api_key=api_key)
 
-def process_and_embed_document(file_path: str, collection_name: str = "swot_docs"):
+def process_and_embed_document(file_path: str, collection_name: str = "swot_docs", progress_callback=None):
     print(f"Loading document: {file_path}")
     loader = TextLoader(file_path, encoding='utf-8')
     docs = loader.load()
@@ -37,7 +37,16 @@ def process_and_embed_document(file_path: str, collection_name: str = "swot_docs
         
     print(f"Embedding {len(splits)} chunks into PostgreSQL...")
     vectorstore = get_vector_store(collection_name)
-    vectorstore.add_documents(splits)
+    
+    # Embed in batches to show progress
+    batch_size = 10
+    for i in range(0, len(splits), batch_size):
+        batch = splits[i:i + batch_size]
+        vectorstore.add_documents(batch)
+        if progress_callback:
+            progress = min((i + batch_size) / len(splits), 1.0)
+            progress_callback(progress)
+
     print("Embedding complete.")
     return vectorstore
 
@@ -80,7 +89,7 @@ Summary Paragraph:"""
     response = llm.invoke(prompt)
     return response.content
 
-def generate_swot_analysis(vectorstore, selected_categories: list, status_callback=None, progress_callback=None, summary_callback=None):
+def generate_swot_analysis(vectorstore, selected_categories: list, status_callback=None, progress_callback=None, summary_callback=None, stop_event=None):
     """
     Generates the SWOT analysis for the selected categories.
     Returns a dictionary of category -> subcategory -> summary text.
@@ -116,6 +125,11 @@ def generate_swot_analysis(vectorstore, selected_categories: list, status_callba
                 
             qna_list = []
             for question in subcat_data["questions"]:
+                # Check for stop signal at question level
+                if stop_event and stop_event.is_set():
+                    print("Stop signal received. Terminating SWOT generation.")
+                    return results
+                
                 msg = f"Answering: {question}"
                 print(msg)
                 if status_callback:

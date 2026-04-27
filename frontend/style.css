@@ -1,12 +1,12 @@
 :root {
-    --bg-dark: #0f172a;
-    --card-bg: rgba(30, 41, 59, 0.7);
-    --primary: #3b82f6;
-    --primary-glow: rgba(59, 130, 246, 0.5);
-    --secondary: #10b981;
-    --text-main: #f8fafc;
-    --text-muted: #94a3b8;
-    --glass-border: rgba(255, 255, 255, 0.1);
+    --bg-light: #f1f5f9;
+    --card-bg: rgba(255, 255, 255, 0.9);
+    --primary: #dc2626; /* Professional Red */
+    --primary-glow: rgba(220, 38, 38, 0.2);
+    --secondary: #1e293b; /* Dark Slate */
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --glass-border: rgba(0, 0, 0, 0.08);
 }
 
 * {
@@ -17,7 +17,7 @@
 
 body {
     font-family: 'Inter', sans-serif;
-    background-color: var(--bg-dark);
+    background-color: var(--bg-light);
     color: var(--text-main);
     line-height: 1.6;
     overflow-x: hidden;
@@ -49,25 +49,28 @@ body {
     background: var(--primary);
     top: -100px;
     left: -100px;
+    opacity: 0.1;
 }
 
 .blob-2 {
     width: 350px;
     height: 350px;
-    background: var(--secondary);
+    background: #fca5a5;
     bottom: -50px;
     right: -50px;
     animation-delay: -5s;
+    opacity: 0.1;
 }
 
 .blob-3 {
     width: 300px;
     height: 300px;
-    background: #8b5cf6;
+    background: #475569;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     animation-delay: -10s;
+    opacity: 0.05;
 }
 
 @keyframes float {
@@ -93,10 +96,11 @@ body {
     font-weight: 800;
     letter-spacing: -0.025em;
     margin-bottom: 1rem;
+    color: var(--text-main);
 }
 
 .gradient-text {
-    background: linear-gradient(90deg, var(--primary), #8b5cf6);
+    background: linear-gradient(90deg, var(--primary), #b91c1c);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
@@ -111,10 +115,11 @@ body {
 /* Cards & Glassmorphism */
 .glass {
     background: var(--card-bg);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--glass-border);
     border-radius: 1.5rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
 }
 
 .card {
@@ -132,6 +137,7 @@ body {
     align-items: center;
     gap: 1rem;
     margin-bottom: 1.5rem;
+    flex-wrap: wrap;
 }
 
 .step-badge {
@@ -160,18 +166,20 @@ body {
 
 input[type="text"] {
     flex: 1;
-    background: rgba(15, 23, 42, 0.6);
-    border: 1px solid var(--glass-border);
+    background: white;
+    border: 1px solid #e2e8f0;
     border-radius: 0.75rem;
     padding: 1rem 1.5rem;
-    color: white;
+    color: var(--text-main);
     font-size: 1rem;
     outline: none;
-    transition: border-color 0.3s ease;
+    transition: all 0.3s ease;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
 input[type="text"]:focus {
     border-color: var(--primary);
+    box-shadow: 0 0 0 4px var(--primary-glow);
 }
 
 .btn {
@@ -198,16 +206,34 @@ input[type="text"]:focus {
 }
 
 .btn-glow {
-    background: linear-gradient(90deg, var(--primary), #8b5cf6);
+    background: linear-gradient(90deg, var(--primary), #b91c1c);
     color: white;
-    box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+    box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
     width: 100%;
     justify-content: center;
 }
 
 .btn-glow:hover {
-    box-shadow: 0 0 25px rgba(59, 130, 246, 0.6);
-    transform: scale(1.02);
+    box-shadow: 0 8px 25px rgba(220, 38, 38, 0.4);
+    transform: translateY(-2px);
+}
+
+.btn-stop {
+    background: #1e293b;
+    color: #fca5a5;
+    border: 1px solid #dc2626;
+    padding: 0.5rem 1rem; /* Smaller padding for header */
+    font-size: 0.85rem;
+}
+
+.btn-stop:hover {
+    background: #dc2626;
+    color: white;
+}
+
+.action-bar {
+    display: flex;
+    gap: 1rem;
 }
 
 .btn-download {
@@ -225,23 +251,25 @@ input[type="text"]:focus {
 
 .category-item {
     padding: 1rem;
-    background: rgba(15, 23, 42, 0.4);
-    border: 1px solid var(--glass-border);
+    background: white;
+    border: 1px solid #e2e8f0;
     border-radius: 0.75rem;
     display: flex;
     align-items: center;
     gap: 0.75rem;
     cursor: pointer;
     transition: all 0.2s ease;
+    color: var(--text-main);
 }
 
 .category-item:hover {
-    background: rgba(59, 130, 246, 0.1);
+    background: #fee2e2;
+    border-color: var(--primary);
 }
 
 .category-item.selected {
     border-color: var(--primary);
-    background: rgba(59, 130, 246, 0.2);
+    background: #fef2f2;
 }
 
 .checkbox {
@@ -273,26 +301,33 @@ input[type="text"]:focus {
 
 /* Progress & Logs */
 .progress-container {
-    margin: 2rem 0;
+    margin: 1.5rem 0;
+}
+
+.progress-label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+    font-weight: 500;
 }
 
 .progress-bar-wrapper {
     height: 12px;
-    background: rgba(255, 255, 255, 0.05);
+    background: #e2e8f0;
     border-radius: 6px;
     overflow: hidden;
     margin-bottom: 0.75rem;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: 1px solid #cbd5e1;
 }
 
 .progress-fill {
     height: 100%;
     width: 0%;
-    background: linear-gradient(90deg, var(--primary), #8b5cf6, var(--secondary));
+    background: linear-gradient(90deg, var(--primary), #ef4444, #b91c1c);
     background-size: 200% 100%;
     animation: gradient-shift 3s linear infinite;
     transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 0 15px var(--primary-glow);
+    box-shadow: 0 0 10px var(--primary-glow);
 }
 
 @keyframes gradient-shift {
@@ -310,14 +345,15 @@ input[type="text"]:focus {
 
 .logs-container {
     height: 200px;
-    background: rgba(15, 23, 42, 0.8);
-    border: 1px solid var(--glass-border);
+    background: #0f172a; 
+    color: #f8fafc; /* Force light text for visibility */
+    border: 1px solid #cbd5e1;
     border-radius: 1rem;
     padding: 1.25rem;
     overflow-y: auto;
     font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', monospace;
     font-size: 0.85rem;
-    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3);
+    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 /* Custom Scrollbar */
@@ -372,9 +408,10 @@ input[type="text"]:focus {
 
 .result-card {
     padding: 1.5rem;
-    background: rgba(30, 41, 59, 0.5);
-    border: 1px solid var(--glass-border);
+    background: white;
+    border: 1px solid #e2e8f0;
     border-radius: 1rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
 .result-card h3 {
@@ -382,6 +419,8 @@ input[type="text"]:focus {
     color: var(--primary);
     display: flex;
     justify-content: space-between;
+    border-bottom: 2px solid #fee2e2;
+    padding-bottom: 0.5rem;
 }
 
 .subcat-results {
@@ -399,6 +438,8 @@ input[type="text"]:focus {
 .subcat-results p {
     font-size: 1rem;
     color: var(--text-main);
+    text-align: justify;
+    line-height: 1.7;
 }
 
 /* Utilities */

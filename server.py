@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from typing import List
 from sqlalchemy import text
 import asyncio
+import threading
 import json
 import os
 
@@ -33,6 +34,9 @@ class GenerateRequest(BaseModel):
     categories: List[str]
     session_id: str
 
+# Track stop signals for each session
+stop_signals = {}
+
 @app.on_event("startup")
 async def startup_event():
     # Ensure database tables exist
@@ -43,22 +47,50 @@ async def get_categories():
     return list(SWOT_CATEGORIES.keys())
 
 @app.post("/fetch_and_embed")
-async def fetch_and_embed(req: FetchRequest):
-    collection_name = req.company_name.lower().replace(" ", "_")
-    
-    # Check DB first
-    if check_collection_has_documents(collection_name):
-        return {"status": "success", "collection_name": collection_name, "cached": True}
+async def fetch_and_embed_stream(req: FetchRequest):
+    async def event_generator():
+        queue = asyncio.Queue()
+        loop = asyncio.get_event_loop()
+        collection_name = req.company_name.lower().replace(" ", "_")
         
-    try:
-        doc_path = fetch_latest_10k(req.company_name)
-        if not doc_path:
-            return {"status": "error", "message": "Filing not found"}
-            
-        process_and_embed_document(doc_path, collection_name=collection_name)
-        return {"status": "success", "collection_name": collection_name}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+        # Check DB first
+        if check_collection_has_documents(collection_name):
+            yield f"data: {json.dumps({'type': 'complete', 'collection_name': collection_name, 'cached': True})}\n\n"
+            return
+
+        def run_task():
+            try:
+                # 1. Fetch Progress (Start)
+                asyncio.run_coroutine_threadsafe(queue.put({"type": "fetch_progress", "val": 0.5}), loop)
+                doc_path = fetch_latest_10k(req.company_name)
+                
+                if not doc_path:
+                    asyncio.run_coroutine_threadsafe(queue.put({"type": "error", "msg": "Filing not found"}), loop)
+                    return
+                
+                asyncio.run_coroutine_threadsafe(queue.put({"type": "fetch_progress", "val": 1.0}), loop)
+                
+                # 2. Embed Progress
+                def embed_cb(p):
+                    asyncio.run_coroutine_threadsafe(queue.put({"type": "embed_progress", "val": p}), loop)
+                
+                process_and_embed_document(doc_path, collection_name=collection_name, progress_callback=embed_cb)
+                
+                asyncio.run_coroutine_threadsafe(queue.put({"type": "complete", "collection_name": collection_name}), loop)
+            except Exception as e:
+                asyncio.run_coroutine_threadsafe(queue.put({"type": "error", "msg": str(e)}), loop)
+            finally:
+                asyncio.run_coroutine_threadsafe(queue.put(None), loop)
+
+        threading.Thread(target=run_task).start()
+
+        while True:
+            item = await queue.get()
+            if item is None:
+                break
+            yield f"data: {json.dumps(item)}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 @app.delete("/cleanup/{session_id}")
 async def cleanup_session(session_id: str):
@@ -68,12 +100,23 @@ async def cleanup_session(session_id: str):
         conn.commit()
     return {"status": "success"}
 
+@app.post("/stop/{session_id}")
+async def stop_generation(session_id: str):
+    if session_id in stop_signals:
+        stop_signals[session_id].set()
+        return {"status": "success", "message": "Stop signal sent"}
+    return {"status": "error", "message": "No active generation for this session"}
+
 @app.post("/generate_swot")
-async def generate_swot_stream(req: GenerateRequest):
+async def generate_swot_stream(req: GenerateRequest, request: Request):
     async def event_generator():
         queue = asyncio.Queue()
         collection_name = req.company_name.lower().replace(" ", "_")
         vectorstore = get_vector_store(collection_name)
+        
+        # Create stop signal for this session
+        stop_event = threading.Event()
+        stop_signals[req.session_id] = stop_event
         
         def status_callback(msg):
             asyncio.run_coroutine_threadsafe(queue.put({"type": "status", "msg": msg}), loop)
@@ -99,7 +142,8 @@ async def generate_swot_stream(req: GenerateRequest):
                     req.categories, 
                     status_callback=status_callback,
                     progress_callback=progress_callback,
-                    summary_callback=summary_callback
+                    summary_callback=summary_callback,
+                    stop_event=stop_event
                 )
                 
                 # Generate PDF as bytes
@@ -125,6 +169,8 @@ async def generate_swot_stream(req: GenerateRequest):
             except Exception as e:
                 await queue.put({"type": "error", "msg": str(e)})
             finally:
+                if req.session_id in stop_signals:
+                    del stop_signals[req.session_id]
                 await queue.put(None)
 
         asyncio.create_task(run_generation())

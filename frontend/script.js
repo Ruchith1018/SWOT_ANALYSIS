@@ -4,6 +4,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const companyInput = document.getElementById('company-name');
     const fetchStatus = document.getElementById('fetch-status');
     const fetchLoader = document.getElementById('fetch-loader');
+    const fetchProgressContainer = document.getElementById('fetch-progress-container');
+    const fetchProgressFill = document.getElementById('fetch-progress-fill');
+    const embedProgressContainer = document.getElementById('embed-progress-container');
+    const embedProgressFill = document.getElementById('embed-progress-fill');
     const step2 = document.getElementById('step-2');
     const categoryList = document.getElementById('category-list');
     const analysisSection = document.getElementById('analysis-section');
@@ -13,6 +17,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultsContainer = document.getElementById('results-container');
     const resultsGrid = document.getElementById('swot-results-grid');
     const downloadLink = document.getElementById('download-link');
+    const stopBtn = document.getElementById('stop-btn');
+
+    let currentReader = null;
 
     // Handle Session ID and Cleanup
     const oldSessionId = sessionStorage.getItem('swot_session_id');
@@ -62,6 +69,11 @@ document.addEventListener('DOMContentLoaded', () => {
         fetchBtn.disabled = true;
         fetchLoader.classList.remove('hidden');
         fetchStatus.classList.add('hidden');
+        fetchProgressContainer.classList.add('hidden');
+        embedProgressContainer.classList.add('hidden');
+        fetchProgressFill.style.width = '0%';
+        embedProgressFill.style.width = '0%';
+        
         step2.classList.add('hidden');
         analysisSection.classList.add('hidden');
         resultsContainer.classList.add('hidden');
@@ -72,18 +84,47 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ company_name: companyName })
             });
-            const data = await response.json();
 
-            if (data.status === 'success') {
-                fetchStatus.textContent = `Success: Documents for ${companyName} are ready.`;
-                fetchStatus.className = 'status-msg status-success';
-                fetchStatus.classList.remove('hidden');
-                step2.classList.remove('hidden');
-                step2.scrollIntoView({ behavior: 'smooth' });
-            } else {
-                fetchStatus.textContent = `Error: ${data.message}`;
-                fetchStatus.className = 'status-msg status-error';
-                fetchStatus.classList.remove('hidden');
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\n');
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const data = JSON.parse(line.substring(6));
+                        
+                        if (data.type === 'fetch_progress') {
+                            fetchProgressContainer.classList.remove('hidden');
+                            fetchProgressFill.style.width = `${data.val * 100}%`;
+                        } else if (data.type === 'embed_progress') {
+                            embedProgressContainer.classList.remove('hidden');
+                            embedProgressFill.style.width = `${data.val * 100}%`;
+                        } else if (data.type === 'complete') {
+                            fetchStatus.textContent = data.cached ? 
+                                `Documents for ${companyName} retrieved from cache.` : 
+                                `Success: ${companyName} analysis is ready.`;
+                            fetchStatus.className = 'status-msg status-success';
+                            fetchStatus.classList.remove('hidden');
+                            
+                            // Ensure bars are full
+                            fetchProgressFill.style.width = '100%';
+                            embedProgressFill.style.width = '100%';
+                            
+                            step2.classList.remove('hidden');
+                            step2.scrollIntoView({ behavior: 'smooth' });
+                        } else if (data.type === 'error') {
+                            fetchStatus.textContent = `Error: ${data.msg}`;
+                            fetchStatus.className = 'status-msg status-error';
+                            fetchStatus.classList.remove('hidden');
+                        }
+                    }
+                }
             }
         } catch (err) {
             fetchStatus.textContent = `System Error: ${err.message}`;
@@ -110,6 +151,11 @@ document.addEventListener('DOMContentLoaded', () => {
         liveLogs.innerHTML = '';
         progressFill.style.width = '0%';
         progressPercent.textContent = '0%';
+        resultsGrid.innerHTML = '';
+
+        generateBtn.disabled = true;
+        generateBtn.classList.add('hidden');
+        stopBtn.classList.remove('hidden');
 
         // Start SSE Connection
         fetch('/generate_swot', {
@@ -121,12 +167,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 session_id: sessionId
             })
         }).then(response => {
-            const reader = response.body.getReader();
+            currentReader = response.body.getReader();
             const decoder = new TextDecoder();
 
             function read() {
-                reader.read().then(({ done, value }) => {
-                    if (done) return;
+                currentReader.read().then(({ done, value }) => {
+                    if (done) {
+                        finishGeneration();
+                        return;
+                    }
                     
                     const chunk = decoder.decode(value);
                     const lines = chunk.split('\n');
@@ -141,8 +190,37 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
             read();
+        }).catch(err => {
+            console.error("Stream error:", err);
+            finishGeneration();
         });
     });
+
+    stopBtn.addEventListener('click', async () => {
+        if (currentReader) {
+            try {
+                await fetch(`/stop/${sessionId}`, { method: 'POST' });
+                currentReader.cancel();
+                currentReader = null;
+                
+                const entry = document.createElement('div');
+                entry.className = 'log-entry log-warn';
+                entry.textContent = 'Analysis stopped by user.';
+                liveLogs.appendChild(entry);
+                
+                finishGeneration();
+            } catch (err) {
+                console.error("Error stopping:", err);
+            }
+        }
+    });
+
+    function finishGeneration() {
+        currentReader = null;
+        generateBtn.disabled = false;
+        generateBtn.classList.remove('hidden');
+        stopBtn.classList.add('hidden');
+    }
 
     function handleStreamData(data) {
         if (data.type === 'status') {

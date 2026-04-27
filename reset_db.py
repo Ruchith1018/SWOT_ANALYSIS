@@ -15,13 +15,26 @@ if database_url.startswith("postgres://"):
 
 engine = create_engine(database_url)
 
-with engine.connect() as conn:
-    print("Connected to database. Dropping schema public...")
-    conn.execute(text("DROP SCHEMA public CASCADE;"))
-    print("Recreating schema public...")
-    conn.execute(text("CREATE SCHEMA public;"))
-    conn.execute(text("GRANT ALL ON SCHEMA public TO postgres;"))
-    conn.execute(text("GRANT ALL ON SCHEMA public TO public;"))
-    conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
-    conn.commit()
-    print("Database reset successfully.")
+def truncate_tables():
+    with engine.connect() as conn:
+        print("Connected to database. Cleaning data but preserving schema...")
+        
+        # Tables to truncate
+        tables = [
+            "langchain_pg_embedding",
+            "langchain_pg_collection",
+            "swot_reports"
+        ]
+        
+        for table in tables:
+            try:
+                print(f"Truncating {table}...")
+                conn.execute(text(f"TRUNCATE TABLE {table} CASCADE;"))
+                conn.commit()
+            except Exception as e:
+                print(f"Skipping {table}: {e}")
+                
+        print("\nDatabase reset complete. All records deleted, tables preserved.")
+
+if __name__ == "__main__":
+    truncate_tables()
