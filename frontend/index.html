@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SWOT Intelligence RAG</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    <div class="background-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <main class="container">
+        <header class="hero">
+            <h1>SWOT Intelligence <span class="gradient-text">RAG</span></h1>
+            <p>Generate institutional-grade SWOT analysis from SEC 10-K filings using NVIDIA AI.</p>
+        </header>
+
+        <section class="card glass shadow-xl" id="step-1">
+            <div class="card-header">
+                <div class="step-badge">1</div>
+                <h2>Company Retrieval</h2>
+            </div>
+            <div class="input-group">
+                <input type="text" id="company-name" placeholder="Enter Company Name or Ticker (e.g. Apple, NVDA)">
+                <button id="fetch-btn" class="btn btn-primary">
+                    <span class="btn-text">Fetch & Embed</span>
+                    <div class="loader-inline hidden" id="fetch-loader"></div>
+                </button>
+            </div>
+            <div id="fetch-status" class="status-msg hidden"></div>
+        </section>
+
+        <section class="card glass shadow-xl hidden" id="step-2">
+            <div class="card-header">
+                <div class="step-badge">2</div>
+                <h2>Analysis Configuration</h2>
+            </div>
+            <p class="section-desc">Select the specific SWOT categories you wish to analyze.</p>
+            <div id="category-list" class="category-grid">
+                <!-- Categories will be injected here -->
+            </div>
+            <div class="action-bar">
+                <button id="generate-btn" class="btn btn-glow">Generate SWOT Analysis</button>
+            </div>
+        </section>
+
+        <section class="card glass shadow-xl hidden" id="analysis-section">
+            <div class="card-header">
+                <h2>Analysis Progress</h2>
+            </div>
+            <div class="progress-container">
+                <div class="progress-bar-wrapper">
+                    <div id="progress-fill" class="progress-fill"></div>
+                </div>
+                <div id="progress-percent" class="progress-percent">0%</div>
+            </div>
+            <div id="live-logs" class="logs-container">
+                <div class="log-entry log-info">Waiting to start...</div>
+            </div>
+        </section>
+
+        <section id="results-container" class="hidden">
+            <header class="results-header">
+                <h2>SWOT Analysis Results</h2>
+                <a id="download-link" href="#" class="btn btn-download hidden">
+                    <i class="fas fa-file-pdf"></i> Download PDF Report
+                </a>
+            </header>
+            <div id="swot-results-grid" class="results-grid">
+                <!-- Results will be injected here -->
+            </div>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
