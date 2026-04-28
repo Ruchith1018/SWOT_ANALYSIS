@@ -6,6 +6,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_nvidia_ai_endpoints import ChatNVIDIA
 from database import get_vector_store
 from swot_config import SWOT_CATEGORIES
+from langchain_community.tools.tavily_search import TavilySearchResults
 
 current_status_callback = None
 
@@ -83,13 +84,41 @@ def process_subcategory_batch(vectorstore, llm, questions: list, summary_instruc
             
     context_str = "\n\n".join(list(all_context))
     
-    # 2. Generation Phase (Single Call)
-    if status_callback:
-        status_callback("Analyzing data and writing summary...")
-        
+    # 2. Generation Phase (Custom Logic with Internet Fallback)
     numbered_questions = "\n".join([f"{i+1}. {q}" for i, q in enumerate(questions)])
     
-    prompt = f"""You are an expert financial analyst. Based on the provided context from a company's SEC 10-K report, please perform the following tasks:
+    if status_callback:
+        status_callback("Evaluating local SEC data...")
+        
+    tavily_tool = TavilySearchResults(max_results=3)
+    
+    check_prompt = f"""You are an expert financial analyst. 
+You have this context from a company's SEC 10-K:
+{context_str}
+
+Questions to answer:
+{numbered_questions}
+
+Does the context contain enough information to accurately answer ALL of the questions?
+If YES, reply exactly with: "YES".
+If NO, reply with the exact search query you would type into a search engine to find the missing information. Reply ONLY with the search query, nothing else."""
+
+    check_response = llm.invoke(check_prompt).content.strip()
+    
+    internet_context = ""
+    if check_response.upper() != "YES":
+        if status_callback:
+            status_callback(f"Searching internet for missing data: {check_response}")
+        try:
+            search_results = tavily_tool.invoke({"query": check_response})
+            internet_context = "\n\nInternet Search Results:\n" + str(search_results)
+        except Exception as e:
+            print(f"Search failed: {e}")
+            
+    if status_callback:
+        status_callback("Analyzing data and generating answers...")
+
+    final_prompt = f"""You are an expert financial analyst. Based on the provided context, please perform the following tasks:
 
 TASK 1: Answer each of the following questions accurately. If the answer is not in the context, state "Information not found."
 Questions:
@@ -99,8 +128,8 @@ TASK 2: Write a final summary paragraph based on your answers from TASK 1.
 Follow this instruction strictly:
 {summary_instruction}
 
-Context:
-{context_str}
+Context from local SEC 10-K:
+{context_str}{internet_context}
 
 Format your response exactly like this:
 ANSWERS:
@@ -111,8 +140,8 @@ ANSWERS:
 SUMMARY:
 [Your summary paragraph here]
 """
-    
-    response = llm.invoke(prompt)
+
+    response = llm.invoke(final_prompt)
     content = response.content
     
     # Parse just the summary to send to the UI
