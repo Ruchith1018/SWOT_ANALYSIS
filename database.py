@@ -3,6 +3,7 @@ from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
 from langchain_community.vectorstores import PGVector
 from langchain_nvidia_ai_endpoints import NVIDIAEmbeddings
+from sqlalchemy.pool import NullPool
 
 load_dotenv()
 
@@ -11,7 +12,7 @@ if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 def get_engine():
-    return create_engine(DATABASE_URL)
+    return create_engine(DATABASE_URL, poolclass=NullPool)
 
 def get_embeddings():
     api_key = os.environ.get("NVIDIA_API_KEY")
@@ -24,7 +25,8 @@ def get_vector_store(collection_name: str = "swot_docs"):
         connection_string=DATABASE_URL,
         embedding_function=embeddings,
         collection_name=collection_name,
-        use_jsonb=True
+        use_jsonb=True,
+        engine_args={"poolclass": NullPool}
     )
 
 def init_db():
